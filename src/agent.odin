@@ -6,12 +6,15 @@ import "vendor:sdl2/ttf"
 import "core:math/rand"
 
 EXPLORE_RATE :: 0.3
+// Maybe put on struct so can vary in UI
+LEARNING_RATE :: 0.2
 
 Position :: struct {
     x: int,
     y: int,
 }
 
+// Should maybe put pointer to simulation here and stop passing full simulation to each function
 Agent :: struct {
     start_pos: Position,
     current_pos: Position,
@@ -51,8 +54,30 @@ agent_choose_action :: proc(using sim: ^Simulation) -> Action {
                 }
             }
         }
+        if max_reward == 0.0 {
+            return rand.choice_enum(Action)
+        }
         return action
     }
+}
+
+// Do round calculation outside
+// Returns true when goal has been reached, otherwise false
+agent_play :: proc(sim: ^Simulation) -> bool {
+    using sim.agent
+    if reward := sim.mat[current_pos.y][current_pos.x].reward; reward != 0 {
+        sim.mat[current_pos.y][current_pos.x].utility = reward
+        for p in path {
+            utility := sim.mat[p.y][p.x].utility
+            r := utility + LEARNING_RATE * (reward - utility)
+            sim.mat[p.y][p.x].utility = r
+        }
+        // Reset agent here? or outside
+        return true
+    } 
+    action := agent_choose_action(sim)
+    sim_move_agent(sim, action)
+    return false
 }
 
 is_agent_start :: proc(using agent: ^Agent, x, y: int) -> bool {

@@ -116,6 +116,8 @@ ui_all_windows :: proc(using app: ^App) {
 			if .SUBMIT in mu.button(mu_ctx, "Move Right") { sim_move_agent(app.simulation, .RIGHT) }
 			if .SUBMIT in mu.button(mu_ctx, "Move Up") { sim_move_agent(app.simulation, .UP) }
 			if .SUBMIT in mu.button(mu_ctx, "Move Down") { sim_move_agent(app.simulation, .DOWN) }
+			mu.label(mu_ctx, "Start Playing")
+			if .SUBMIT in mu.button(mu_ctx, "Play") { playing = true }
 		}
 	}
 }

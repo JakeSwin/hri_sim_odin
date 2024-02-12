@@ -66,6 +66,10 @@ sim_destroy_agent :: proc(using sim: ^Simulation) {
     sim.agent = nil
 }
 
+sim_get_reward_at_position :: proc(using sim: ^Simulation, position: Position) -> f32 {
+	return sim.mat[position.y][position.x].reward
+}
+
 sim_add_wall :: proc(using sim: ^Simulation, x, y: u32) {
 	sim.mat[y][x].contains = .WALL
 }
@@ -122,6 +126,7 @@ sim_next_cell :: proc(sim: ^Simulation, action: Action) -> (^Cell, Position, boo
 sim_move_agent :: proc(sim: ^Simulation, action: Action) -> bool {
 	if _, pos, available := sim_next_cell(sim, action); available {
 		append(&sim.agent.path, sim.agent.current_pos)
+		sim.mat[sim.agent.current_pos.y][sim.agent.current_pos.x].policy = action
 		sim.agent.current_pos = pos
 		return true
 	}
@@ -134,58 +139,70 @@ sim_reset_agent :: proc(using sim: ^Simulation) {
 }
 
 sim_update :: proc(using app: ^App) {
-	if simulation != nil {
-		down, across, width, height: i32
-		width = i32((simulation.cols * GRID_SIZE) + ((simulation.cols + 1) * GAP_SIZE))
-		height = i32((simulation.rows * GRID_SIZE) + ((simulation.rows + 1) * GAP_SIZE))
-		across = (app.viewport.w / 2) - (width / 2)
-		down = (app.viewport.h / 2) - (height / 2)
-		simulation.rect = SDL.Rect{across, down, width, height}
+	if simulation == nil {
+		return
+	}
+	if playing {
+		if agent_play(simulation) {
+			sim_reset_agent(simulation)
+			current_round += 1
+			if max_rounds == current_round {
+				playing = false
+				current_round = 0
+			}
+		}
+		return
+	}
+	down, across, width, height: i32
+	width = i32((simulation.cols * GRID_SIZE) + ((simulation.cols + 1) * GAP_SIZE))
+	height = i32((simulation.rows * GRID_SIZE) + ((simulation.rows + 1) * GAP_SIZE))
+	across = (app.viewport.w / 2) - (width / 2)
+	down = (app.viewport.h / 2) - (height / 2)
+	simulation.rect = SDL.Rect{across, down, width, height}
 
-		for row, j in simulation.mat {
-			for &cell, i in row {
-				x := i32(i * (GRID_SIZE + GAP_SIZE)) + across + GAP_SIZE
-				y := i32(j * (GRID_SIZE + GAP_SIZE)) + down + GAP_SIZE
-				cell.rect = SDL.Rect{x, y, GRID_SIZE, GRID_SIZE}
+	for row, j in simulation.mat {
+		for &cell, i in row {
+			x := i32(i * (GRID_SIZE + GAP_SIZE)) + across + GAP_SIZE
+			y := i32(j * (GRID_SIZE + GAP_SIZE)) + down + GAP_SIZE
+			cell.rect = SDL.Rect{x, y, GRID_SIZE, GRID_SIZE}
 
-				if mouse_pos_x > x &&
-				   mouse_pos_x < x + GRID_SIZE &&
-				   mouse_pos_y > y &&
-				   mouse_pos_y < y + GRID_SIZE {
-					cell.selected = true
-					if mouse_down {
-						switch current_tool {
-						case .ADD_AGENT:
-							if simulation.agent == nil {
-								simulation.agent = agent_create(i, j)
-							} else {
-                                cell.contains = .NOTHING
-								sim_destroy_agent(simulation)
-								simulation.agent = agent_create(i, j)
-							}
-						case .ADD_WALL:
-                            if simulation.agent != nil {
-								if intersects_agent(simulation.agent, i, j) {
-                                    sim_destroy_agent(simulation)
-                                }
-							} 
-							cell.contains = .WALL
-						case .CLEAR:
-                            if simulation.agent != nil {
-								if intersects_agent(simulation.agent, i, j) {
-                                    sim_destroy_agent(simulation)
-                                }
-							}
+			if mouse_pos_x > x &&
+				mouse_pos_x < x + GRID_SIZE &&
+				mouse_pos_y > y &&
+				mouse_pos_y < y + GRID_SIZE {
+				cell.selected = true
+				if mouse_down {
+					switch current_tool {
+					case .ADD_AGENT:
+						if simulation.agent == nil {
+							simulation.agent = agent_create(i, j)
+						} else {
 							cell.contains = .NOTHING
-                            cell.reward = 0
-                        case .SET_REWARD:
-                            cell.reward = reward_add
-						case .NONE:
+							sim_destroy_agent(simulation)
+							simulation.agent = agent_create(i, j)
 						}
+					case .ADD_WALL:
+						if simulation.agent != nil {
+							if intersects_agent(simulation.agent, i, j) {
+								sim_destroy_agent(simulation)
+							}
+						} 
+						cell.contains = .WALL
+					case .CLEAR:
+						if simulation.agent != nil {
+							if intersects_agent(simulation.agent, i, j) {
+								sim_destroy_agent(simulation)
+							}
+						}
+						cell.contains = .NOTHING
+						cell.reward = 0
+					case .SET_REWARD:
+						cell.reward = reward_add
+					case .NONE:
 					}
-				} else {
-					cell.selected = false
 				}
+			} else {
+				cell.selected = false
 			}
 		}
 	}
@@ -210,17 +227,11 @@ sim_draw :: proc(using app: ^App) {
 				} else {
 					SDL.RenderFillRect(renderer, &cell.rect)
 				}
-				if simulation.agent != nil {
-					if is_agent_current(simulation.agent, i, j) {
-						sim_draw_image_at_cell(app, &cell, "assets\\robot.png")
-                        continue
-					}
-				}
-                if cell.reward != f32(0) {
-                    sim_draw_value(app, &cell, cell.reward, "%.1f")
-                } else if show_utility {
+				if show_utility {
 					sim_draw_value(app, &cell, cell.utility, "%.3f")
-				} else if show_policy {
+					continue
+				}
+				if show_policy {
 					switch cell.policy {
 					case .UP:
 						sim_draw_image_at_cell(app, &cell, "assets\\arrow_upward.png")
@@ -231,7 +242,17 @@ sim_draw :: proc(using app: ^App) {
 					case .RIGHT:
 						sim_draw_image_at_cell(app, &cell, "assets\\arrow_forward.png")
 					}
+					continue
 				}
+				if simulation.agent != nil {
+					if is_agent_current(simulation.agent, i, j) {
+						sim_draw_image_at_cell(app, &cell, "assets\\robot.png")
+                        continue
+					}
+				}
+                if cell.reward != f32(0) {
+                    sim_draw_value(app, &cell, cell.reward, "%.1f")
+                } 
 			}
 		}
 	}

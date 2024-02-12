@@ -15,16 +15,19 @@ Tool :: enum {
 }
 
 State :: struct {
-	tmp_rows:     u32,
-	tmp_cols:     u32,
-	mouse_pos_x:  i32,
-	mouse_pos_y:  i32,
-	show_utility: bool,
-	show_policy:  bool,
-	textures:     map[cstring]^SDL.Texture,
-	current_tool: Tool,
-	mouse_down:   bool,
-	reward_add:   f32,
+	tmp_rows:      u32,
+	tmp_cols:      u32,
+	mouse_pos_x:   i32,
+	mouse_pos_y:   i32,
+	show_utility:  bool,
+	show_policy:   bool,
+	textures:      map[cstring]^SDL.Texture,
+	current_tool:  Tool,
+	mouse_down:    bool,
+	playing:       bool,
+	max_rounds:    u32,
+	current_round: u32,
+	reward_add:    f32,
 }
 
 App :: struct {
@@ -116,6 +119,7 @@ app_create :: proc() -> (App, bool) {
 	state: State
 	state.tmp_rows = 5
 	state.tmp_cols = 10
+	state.max_rounds = 15
 
 	return App{mu_ctx, window, renderer, atlas_texture, sim, SDL.Rect{}, state, true}, true
 }

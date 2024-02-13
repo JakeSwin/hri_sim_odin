@@ -234,19 +234,19 @@ sim_draw :: proc(using app: ^App) {
 				if show_policy {
 					switch cell.policy {
 					case .UP:
-						sim_draw_image_at_cell(app, &cell, "assets\\arrow_upward.png")
+						sim_draw_image_at_cell(app, &cell, "arrow_upward.png")
 					case .DOWN:
-						sim_draw_image_at_cell(app, &cell, "assets\\arrow_downward.png")
+						sim_draw_image_at_cell(app, &cell, "arrow_downward.png")
 					case .LEFT:
-						sim_draw_image_at_cell(app, &cell, "assets\\arrow_back.png")
+						sim_draw_image_at_cell(app, &cell, "arrow_back.png")
 					case .RIGHT:
-						sim_draw_image_at_cell(app, &cell, "assets\\arrow_forward.png")
+						sim_draw_image_at_cell(app, &cell, "arrow_forward.png")
 					}
 					continue
 				}
 				if simulation.agent != nil {
 					if is_agent_current(simulation.agent, i, j) {
-						sim_draw_image_at_cell(app, &cell, "assets\\robot.png")
+						sim_draw_image_at_cell(app, &cell, "robot.png")
                         continue
 					}
 				}
@@ -258,7 +258,7 @@ sim_draw :: proc(using app: ^App) {
 	}
 }
 
-sim_draw_image_at_cell :: proc(using app: ^App, cell: ^Cell, image_path: cstring) {
+sim_draw_image_at_cell :: proc(using app: ^App, cell: ^Cell, image_path: string) {
 	texture := app_get_texture(app, image_path)
 
 	// Don't need to know texture width and height becaus I can just set it to half grid size each time

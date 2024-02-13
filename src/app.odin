@@ -1,6 +1,7 @@
 package hri
 
 import "core:fmt"
+import "core:strings"
 import mu "vendor:microui"
 import SDL "vendor:sdl2"
 import "vendor:sdl2/image"
@@ -21,7 +22,7 @@ State :: struct {
 	mouse_pos_y:   i32,
 	show_utility:  bool,
 	show_policy:   bool,
-	textures:      map[cstring]^SDL.Texture,
+	textures:      map[string]^SDL.Texture,
 	current_tool:  Tool,
 	mouse_down:    bool,
 	playing:       bool,
@@ -114,7 +115,11 @@ app_create :: proc() -> (App, bool) {
 	sim_add_wall(sim, 2, 2)
 	sim_add_wall(sim, 2, 3)
 
-	font = ttf.OpenFont("assets\\Roboto-Regular.ttf", 20)
+	when ODIN_OS == .Windows {
+		font = ttf.OpenFont("assets\\Roboto-Regular.ttf", 20)
+	} else {
+		font = ttf.OpenFont("assets/Roboto-Regular.ttf", 20)
+	}
 
 	state: State
 	state.tmp_rows = 5
@@ -215,8 +220,18 @@ app_render :: proc(using app: ^App) {
 }
 
 
-app_load_texture :: proc(using app: ^App, filename: cstring) -> ^SDL.Texture {
-	surface := image.Load(filename)
+app_load_texture :: proc(using app: ^App, filename: string) -> ^SDL.Texture {
+	builder: strings.Builder
+	strings.builder_init_none(&builder)
+	when ODIN_OS == .Windows {
+		strings.write_string(&builder, "assets\\")
+		// surface := image.Load("assets\\" + filename)
+	} else {
+		strings.write_string(&builder, "assets/")
+		// surface := image.Load("assets/" + filename)
+	}
+	strings.write_string(&builder, filename)
+	surface := image.Load(strings.clone_to_cstring(strings.to_string(builder)))
 	defer SDL.FreeSurface(surface)
 	if surface == nil {
 		fmt.println("Failed to load texture file: ", SDL.GetError())
@@ -232,7 +247,7 @@ app_load_texture :: proc(using app: ^App, filename: cstring) -> ^SDL.Texture {
 	return texture
 }
 
-app_get_texture :: proc(using app: ^App, filename: cstring) -> ^SDL.Texture {
+app_get_texture :: proc(using app: ^App, filename: string) -> ^SDL.Texture {
 	if texture, ok := textures[filename]; ok {
 		return texture
 	}

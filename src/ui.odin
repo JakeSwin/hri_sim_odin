@@ -110,14 +110,21 @@ ui_all_windows :: proc(using app: ^App) {
 				slider(mu_ctx, &app.reward_add, -5, 5)
 			}
 		}
-		if .ACTIVE in mu.header(mu_ctx, "Move Agent") {
-			mu.layout_row(mu_ctx, {100, 100}, 0)
-			if .SUBMIT in mu.button(mu_ctx, "Move Left") { sim_move_agent(app.simulation, .LEFT) }
-			if .SUBMIT in mu.button(mu_ctx, "Move Right") { sim_move_agent(app.simulation, .RIGHT) }
-			if .SUBMIT in mu.button(mu_ctx, "Move Up") { sim_move_agent(app.simulation, .UP) }
-			if .SUBMIT in mu.button(mu_ctx, "Move Down") { sim_move_agent(app.simulation, .DOWN) }
-			mu.label(mu_ctx, "Start Playing")
-			if .SUBMIT in mu.button(mu_ctx, "Play") { playing = true }
+	}
+
+	if app.simulation.agent != nil {
+		if mu.window(mu_ctx, "Agent Options", {600, 20, 300, 200}, opts) {
+			mu.layout_row(mu_ctx, {100, -50})
+			mu.label(mu_ctx, "Agent")
+			if .ACTIVE in mu.header(mu_ctx, "Move Agent") {
+				mu.layout_row(mu_ctx, {100, 100}, 0)
+				if .SUBMIT in mu.button(mu_ctx, "Move Left") { sim_move_agent(app.simulation, .LEFT) }
+				if .SUBMIT in mu.button(mu_ctx, "Move Right") { sim_move_agent(app.simulation, .RIGHT) }
+				if .SUBMIT in mu.button(mu_ctx, "Move Up") { sim_move_agent(app.simulation, .UP) }
+				if .SUBMIT in mu.button(mu_ctx, "Move Down") { sim_move_agent(app.simulation, .DOWN) }
+				mu.label(mu_ctx, "Start Playing")
+				if .SUBMIT in mu.button(mu_ctx, "Play") { playing = true }
+			}
 		}
 	}
 }

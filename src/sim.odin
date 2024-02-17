@@ -175,11 +175,11 @@ sim_update :: proc(using app: ^App) {
 					switch current_tool {
 					case .ADD_AGENT:
 						if simulation.agent == nil {
-							simulation.agent = agent_create(i, j)
+							simulation.agent = agent_create(simulation, i, j)
 						} else {
 							cell.contains = .NOTHING
 							sim_destroy_agent(simulation)
-							simulation.agent = agent_create(i, j)
+							simulation.agent = agent_create(simulation, i, j)
 						}
 					case .ADD_WALL:
 						if simulation.agent != nil {

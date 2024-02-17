@@ -19,14 +19,16 @@ Agent :: struct {
     start_pos: Position,
     current_pos: Position,
     path: [dynamic]Position,
+    parent_sim: ^Simulation,
 }
 
-agent_create :: proc(x, y: int) -> ^Agent {
+agent_create :: proc(sim: ^Simulation, x, y: int) -> ^Agent {
     a := new(Agent)
     pos := Position{x,y}
     a.start_pos = pos
     a.current_pos = pos
     a.path = make_dynamic_array([dynamic]Position)
+    a.parent_sim = sim
     return a
 }
 

@@ -16,19 +16,20 @@ Tool :: enum {
 }
 
 State :: struct {
-	tmp_rows:      u32,
-	tmp_cols:      u32,
-	mouse_pos_x:   i32,
-	mouse_pos_y:   i32,
-	show_utility:  bool,
-	show_policy:   bool,
-	textures:      map[string]^SDL.Texture,
-	current_tool:  Tool,
-	mouse_down:    bool,
-	playing:       bool,
-	max_rounds:    u32,
-	current_round: u32,
-	reward_add:    f32,
+	tmp_rows:       u32,
+	tmp_cols:       u32,
+	mouse_pos_x:    i32,
+	mouse_pos_y:    i32,
+	show_utility:   bool,
+	show_policy:    bool,
+	textures:       map[string]^SDL.Texture,
+	current_tool:   Tool,
+	mouse_down:     bool,
+	playing:        bool,
+	max_rounds:     u32,
+	current_round:  u32,
+	reward_add:     f32,
+	is_interactive: bool,
 }
 
 App :: struct {

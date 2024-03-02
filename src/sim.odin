@@ -1,17 +1,24 @@
 package hri
 
 import "core:fmt"
+import "core:math/rand"
 import SDL "vendor:sdl2"
 import "vendor:sdl2/ttf"
 
-// Should allow NONE for doing nothing
-// In the case of reaching target or wall
 Action :: enum {
 	NONE,
 	UP,
 	DOWN,
 	LEFT,
 	RIGHT,
+}
+
+random_action_excluding :: proc(avoid_action: Action) -> Action {
+    action := rand.choice_enum(Action)
+    for action == avoid_action {
+        action = rand.choice_enum(Action)
+    }
+    return action
 }
 
 Content :: enum {
@@ -65,6 +72,10 @@ sim_destroy :: proc(using sim: ^Simulation) {
 
 sim_add_agent :: proc(using sim: ^Simulation, x, y: int) {
 	sim.agent = agent_create(sim, x, y)
+}
+
+sim_add_interactive_agent :: proc(using sim: ^Simulation, x, y: int) {
+	sim.agent = interactive_agent_create(sim, x, y)
 }
 
 sim_destroy_agent :: proc(using sim: ^Simulation) {
@@ -229,12 +240,19 @@ sim_update :: proc(using app: ^App) {
 				if mouse_down {
 					switch current_tool {
 					case .ADD_AGENT:
+						new_agent: ^Agent
+						if app.is_interactive {
+							new_agent = interactive_agent_create(simulation, i, j)
+						} else {
+							new_agent = agent_create(simulation, i, j)
+						}
 						if simulation.agent == nil {
-							sim_add_agent(simulation, i, j)
+							simulation.agent = new_agent
 						} else {
 							cell.contains = .NOTHING
 							sim_destroy_agent(simulation)
-							sim_add_agent(simulation, i, j)
+							simulation.agent = new_agent
+							// sim_add_agent(simulation, i, j)
 						}
 					case .ADD_WALL:
 						if simulation.agent != nil {

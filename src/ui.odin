@@ -109,6 +109,12 @@ ui_all_windows :: proc(using app: ^App) {
 				mu.label(mu_ctx, "Reward Amount")
 				slider(mu_ctx, &app.reward_add, -5, 5)
 			}
+			if current_tool == .ADD_AGENT {
+				mu.layout_row(mu_ctx, {-1}, 0)
+				mu.label(mu_ctx, "Agent Options")
+				mu.layout_row(mu_ctx, {110, 110}, 0)
+				mu.checkbox(mu_ctx, "Interactive Agent", &app.is_interactive)
+			}
 		}
 	}
 
@@ -132,6 +138,12 @@ ui_all_windows :: proc(using app: ^App) {
 				mu.label(mu_ctx, fmt.tprintf("Current Round: %d", current_round))
 				mu.label(mu_ctx, fmt.tprintf("Max Rounds: %d", max_rounds))
 			}
+		}
+		#partial switch s in app.simulation.agent.variant {
+			case ^InteractiveAgent:
+				if mu.window(mu_ctx, "Interactive Agent Options", {800, 200, 300, 200}, opts) {
+					// mu.label(mu_ctx, fmt.tprintf("%v", s.next_action))
+				}
 		}
 	}
 }

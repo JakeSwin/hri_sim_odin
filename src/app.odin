@@ -110,10 +110,9 @@ app_create :: proc() -> (App, bool) {
 	mu_ctx.text_width = mu.default_atlas_text_width
 	mu_ctx.text_height = mu.default_atlas_text_height
 
-	sim := sim_create(5, 10)
-	sim.agent = agent_create(sim, 0, 0)
-	sim_add_wall(sim, 2, 2)
-	sim_add_wall(sim, 2, 3)
+	sim := sim_create(4, 3)
+	sim_add_agent(sim, 0, 0)
+	sim_add_wall(sim, 1, 1)
 
 	when ODIN_OS == .Windows {
 		font = ttf.OpenFont("assets\\Roboto-Regular.ttf", 20)

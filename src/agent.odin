@@ -37,19 +37,14 @@ agent_free :: proc(agent: ^Agent) {
     free(agent)
 }
 
-agent_clear_simulation :: proc(using sim: ^Simulation) {
-    free(agent)
-    sim.agent = nil
-}
-
-agent_choose_action :: proc(using sim: ^Simulation) -> Action {
+agent_choose_action :: proc(using agent: ^Agent) -> Action {
     if rand.float32_range(0, 1) <= EXPLORE_RATE {
         return rand.choice_enum(Action)
     } else {
         max_reward: f32 = 0.0
         action: Action
         for a in Action {
-            if cell, _, available := sim_next_cell(sim, a); available && cell.reward >= max_reward {
+            if cell, _, available := sim_next_cell(parent_sim, current_pos, a); available && cell.reward >= max_reward {
                 if cell.reward >= max_reward {
                     max_reward = cell.reward
                     action = a
@@ -65,20 +60,19 @@ agent_choose_action :: proc(using sim: ^Simulation) -> Action {
 
 // Do round calculation outside
 // Returns true when goal has been reached, otherwise false
-agent_play :: proc(sim: ^Simulation) -> bool {
-    using sim.agent
-    if reward := sim.mat[current_pos.y][current_pos.x].reward; reward != 0 {
-        sim.mat[current_pos.y][current_pos.x].utility = reward
+agent_play :: proc(using agent: ^Agent) -> bool {
+    if reward := parent_sim.mat[current_pos.y][current_pos.x].reward; reward != 0 {
+        parent_sim.mat[current_pos.y][current_pos.x].utility = reward
         for p in path {
-            utility := sim.mat[p.y][p.x].utility
+            utility := parent_sim.mat[p.y][p.x].utility
             r := utility + LEARNING_RATE * (reward - utility)
-            sim.mat[p.y][p.x].utility = r
+            parent_sim.mat[p.y][p.x].utility = r
         }
         // Reset agent here? or outside
         return true
     } 
-    action := agent_choose_action(sim)
-    sim_move_agent(sim, action)
+    action := agent_choose_action(agent)
+    sim_move_agent(parent_sim, action)
     return false
 }
 

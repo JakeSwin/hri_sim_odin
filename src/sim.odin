@@ -28,12 +28,12 @@ Cell :: struct {
 }
 
 Simulation :: struct {
-	rows:    u32,
-	cols:    u32,
-	mat:     [][]Cell,
-	backing: []Cell,
-	rect:    SDL.Rect,
-	agent:   ^Agent,
+	rows:     u32,
+	cols:     u32,
+	mat:      [][]Cell,
+	backing:  []Cell,
+	rect:     SDL.Rect,
+	agent:    ^Agent,
 }
 
 GRID_SIZE :: 60
@@ -51,19 +51,24 @@ sim_create :: proc(rows, cols: u32) -> ^Simulation {
 		sim.mat[row_index] = row
 		offset += cols
 	}
-
 	return sim
 }
 
 sim_destroy :: proc(using sim: ^Simulation) {
 	delete(mat)
 	delete(backing)
-	agent_free(sim.agent)
+	if sim.agent != nil {
+		sim_destroy_agent(sim)
+	}
+}
+
+sim_add_agent :: proc(using sim: ^Simulation, x, y: int) {
+	sim.agent = agent_create(sim, x, y)
 }
 
 sim_destroy_agent :: proc(using sim: ^Simulation) {
 	agent_free(sim.agent)
-    sim.agent = nil
+	sim.agent = nil
 }
 
 sim_get_reward_at_position :: proc(using sim: ^Simulation, position: Position) -> f32 {
@@ -78,55 +83,60 @@ sim_add_reward :: proc(using sim: ^Simulation, x, y: u32, reward: f32) {
 	sim.mat[y][x].reward = reward
 }
 
-sim_next_cell :: proc(sim: ^Simulation, action: Action) -> (^Cell, Position, bool) {
-	using sim.agent
-	if sim.agent != nil {
-		switch action {
-		case .UP:
-			if current_pos.y - 1 < 0 {
-				return nil, {}, false
-			}
-			next_cell := &sim.mat[current_pos.y - 1][current_pos.x]
-			if next_cell.contains == .WALL {
-				return nil, {}, false
-			}
-			return next_cell, Position{current_pos.x, current_pos.y - 1}, true
-		case .DOWN:
-			if current_pos.y + 1 > int(sim.rows - 1) {
-				return nil, {}, false
-			}
-			next_cell := &sim.mat[current_pos.y + 1][current_pos.x]
-			if next_cell.contains == .WALL {
-				return nil, {}, false
-			}
-			return next_cell, Position{current_pos.x, current_pos.y + 1}, true
-		case .LEFT:
-			if current_pos.x - 1 < 0 {
-				return nil, {}, false
-			}
-			next_cell := &sim.mat[current_pos.y][current_pos.x - 1]
-			if next_cell.contains == .WALL {
-				return nil, {}, false
-			}
-			return next_cell, Position{current_pos.x - 1, current_pos.y}, true
-		case .RIGHT:
-			if current_pos.x + 1 > int(sim.cols - 1) {
-				return nil, {}, false
-			}
-			next_cell := &sim.mat[current_pos.y][current_pos.x + 1]
-			if next_cell.contains == .WALL {
-				return nil, {}, false
-			}
-			return next_cell, Position{current_pos.x + 1, current_pos.y}, true
+sim_next_cell :: proc(
+	using sim: ^Simulation,
+	current_pos: Position,
+	action: Action,
+) -> (
+	^Cell,
+	Position,
+	bool,
+) {
+	switch action {
+	case .UP:
+		if current_pos.y - 1 < 0 {
+			return nil, {}, false
 		}
+		next_cell := &mat[current_pos.y - 1][current_pos.x]
+		if next_cell.contains == .WALL {
+			return nil, {}, false
+		}
+		return next_cell, Position{current_pos.x, current_pos.y - 1}, true
+	case .DOWN:
+		if current_pos.y + 1 > int(rows - 1) {
+			return nil, {}, false
+		}
+		next_cell := &mat[current_pos.y + 1][current_pos.x]
+		if next_cell.contains == .WALL {
+			return nil, {}, false
+		}
+		return next_cell, Position{current_pos.x, current_pos.y + 1}, true
+	case .LEFT:
+		if current_pos.x - 1 < 0 {
+			return nil, {}, false
+		}
+		next_cell := &mat[current_pos.y][current_pos.x - 1]
+		if next_cell.contains == .WALL {
+			return nil, {}, false
+		}
+		return next_cell, Position{current_pos.x - 1, current_pos.y}, true
+	case .RIGHT:
+		if current_pos.x + 1 > int(cols - 1) {
+			return nil, {}, false
+		}
+		next_cell := &mat[current_pos.y][current_pos.x + 1]
+		if next_cell.contains == .WALL {
+			return nil, {}, false
+		}
+		return next_cell, Position{current_pos.x + 1, current_pos.y}, true
 	}
 	return nil, {}, false
 }
 
 sim_move_agent :: proc(sim: ^Simulation, action: Action) -> bool {
-	if _, pos, available := sim_next_cell(sim, action); available {
+	if _, pos, available := sim_next_cell(sim, sim.agent.current_pos, action); available {
 		append(&sim.agent.path, sim.agent.current_pos)
-		sim.mat[sim.agent.current_pos.y][sim.agent.current_pos.x].policy = action
+		// sim.mat[sim.agent.current_pos.y][sim.agent.current_pos.x].policy = action
 		sim.agent.current_pos = pos
 		return true
 	}
@@ -138,18 +148,37 @@ sim_reset_agent :: proc(using sim: ^Simulation) {
 	clear(&agent.path)
 }
 
+sim_update_policy :: proc(using sim: ^Simulation) {
+	for row, j in mat {
+		for &cell, i in row {
+			best_utility: f32 = -99.9
+			best_action: Action
+			for a in Action {
+				if next_cell, pos, available := sim_next_cell(sim, {i, j}, a); available {
+					if next_cell.utility > best_utility {
+						best_utility = next_cell.utility
+						best_action = a
+					}
+				}
+			}
+			cell.policy = best_action
+		}
+	}
+}
+
 sim_update :: proc(using app: ^App) {
 	if simulation == nil {
 		return
 	}
 	if playing {
-		if agent_play(simulation) {
+		if agent_play(simulation.agent) {
 			sim_reset_agent(simulation)
 			current_round += 1
 			if max_rounds == current_round {
 				playing = false
 				current_round = 0
 			}
+			sim_update_policy(simulation)
 		}
 		return
 	}
@@ -167,26 +196,26 @@ sim_update :: proc(using app: ^App) {
 			cell.rect = SDL.Rect{x, y, GRID_SIZE, GRID_SIZE}
 
 			if mouse_pos_x > x &&
-				mouse_pos_x < x + GRID_SIZE &&
-				mouse_pos_y > y &&
-				mouse_pos_y < y + GRID_SIZE {
+			   mouse_pos_x < x + GRID_SIZE &&
+			   mouse_pos_y > y &&
+			   mouse_pos_y < y + GRID_SIZE {
 				cell.selected = true
 				if mouse_down {
 					switch current_tool {
 					case .ADD_AGENT:
 						if simulation.agent == nil {
-							simulation.agent = agent_create(simulation, i, j)
+							sim_add_agent(simulation, i, j)
 						} else {
 							cell.contains = .NOTHING
 							sim_destroy_agent(simulation)
-							simulation.agent = agent_create(simulation, i, j)
+							sim_add_agent(simulation, i, j)
 						}
 					case .ADD_WALL:
 						if simulation.agent != nil {
 							if intersects_agent(simulation.agent, i, j) {
 								sim_destroy_agent(simulation)
 							}
-						} 
+						}
 						cell.contains = .WALL
 					case .CLEAR:
 						if simulation.agent != nil {
@@ -247,12 +276,12 @@ sim_draw :: proc(using app: ^App) {
 				if simulation.agent != nil {
 					if is_agent_current(simulation.agent, i, j) {
 						sim_draw_image_at_cell(app, &cell, "robot.png")
-                        continue
+						continue
 					}
 				}
-                if cell.reward != f32(0) {
-                    sim_draw_value(app, &cell, cell.reward, "%.1f")
-                } 
+				if cell.reward != f32(0) {
+					sim_draw_value(app, &cell, cell.reward, "%.1f")
+				}
 			}
 		}
 	}

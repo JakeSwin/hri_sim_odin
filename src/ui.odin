@@ -122,8 +122,15 @@ ui_all_windows :: proc(using app: ^App) {
 				if .SUBMIT in mu.button(mu_ctx, "Move Right") { sim_move_agent(app.simulation, .RIGHT) }
 				if .SUBMIT in mu.button(mu_ctx, "Move Up") { sim_move_agent(app.simulation, .UP) }
 				if .SUBMIT in mu.button(mu_ctx, "Move Down") { sim_move_agent(app.simulation, .DOWN) }
-				mu.label(mu_ctx, "Start Playing")
-				if .SUBMIT in mu.button(mu_ctx, "Play") { playing = true }
+				if !playing {
+					mu.label(mu_ctx, "Start Playing")
+					if .SUBMIT in mu.button(mu_ctx, "Play") { playing = true }
+				} else {
+					mu.label(mu_ctx, "Stop Playing")
+					if .SUBMIT in mu.button(mu_ctx, "Stop") { playing = false }
+				}
+				mu.label(mu_ctx, fmt.tprintf("Current Round: %d", current_round))
+				mu.label(mu_ctx, fmt.tprintf("Max Rounds: %d", max_rounds))
 			}
 		}
 	}

@@ -7,6 +7,7 @@ import "vendor:sdl2/ttf"
 // Should allow NONE for doing nothing
 // In the case of reaching target or wall
 Action :: enum {
+	NONE,
 	UP,
 	DOWN,
 	LEFT,
@@ -28,12 +29,12 @@ Cell :: struct {
 }
 
 Simulation :: struct {
-	rows:     u32,
-	cols:     u32,
-	mat:      [][]Cell,
-	backing:  []Cell,
-	rect:     SDL.Rect,
-	agent:    ^Agent,
+	rows:    u32,
+	cols:    u32,
+	mat:     [][]Cell,
+	backing: []Cell,
+	rect:    SDL.Rect,
+	agent:   ^Agent,
 }
 
 GRID_SIZE :: 60
@@ -93,6 +94,9 @@ sim_next_cell :: proc(
 	bool,
 ) {
 	switch action {
+	case .NONE:
+		next_cell := &mat[current_pos.y][current_pos.x]
+		return next_cell, Position{current_pos.x, current_pos.y}, true
 	case .UP:
 		if current_pos.y - 1 < 0 {
 			return nil, {}, false
@@ -148,14 +152,36 @@ sim_reset_agent :: proc(using sim: ^Simulation) {
 	clear(&agent.path)
 }
 
+// Checks that the policy does not create loops.
+// TODO Check if this is necessary / actually part of the policy generation or 
+// if it is something that I have just made up
+sim_policy_check_repeat :: proc(action: Action, policy: Action) -> bool {
+	if action == .LEFT && policy == .RIGHT ||
+	   action == .RIGHT && policy == .LEFT ||
+	   action == .UP && policy == .DOWN ||
+	   action == .DOWN && policy == .UP {
+		return true
+	} else {
+		return false
+	}
+}
+
 sim_update_policy :: proc(using sim: ^Simulation) {
 	for row, j in mat {
 		for &cell, i in row {
+			if cell.reward != 0.0 {
+				cell.policy = .NONE
+				continue
+			}
 			best_utility: f32 = -99.9
 			best_action: Action
 			for a in Action {
+				// Otherwise if own cell is highest utility in region policy will stay still
+				if a == .NONE {
+					continue
+				}
 				if next_cell, pos, available := sim_next_cell(sim, {i, j}, a); available {
-					if next_cell.utility > best_utility {
+					if next_cell.utility > best_utility && !sim_policy_check_repeat(a, next_cell.policy) {
 						best_utility = next_cell.utility
 						best_action = a
 					}
@@ -262,6 +288,8 @@ sim_draw :: proc(using app: ^App) {
 				}
 				if show_policy {
 					switch cell.policy {
+					case .NONE:
+						sim_draw_image_at_cell(app, &cell, "circle.png")
 					case .UP:
 						sim_draw_image_at_cell(app, &cell, "arrow_upward.png")
 					case .DOWN:

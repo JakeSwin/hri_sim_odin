@@ -15,7 +15,7 @@ Action :: enum {
 
 random_action_excluding :: proc(avoid_action: Action) -> Action {
     action := rand.choice_enum(Action)
-    for action == avoid_action {
+    for action == avoid_action || action == .NONE {
         action = rand.choice_enum(Action)
     }
     return action
@@ -208,14 +208,27 @@ sim_update :: proc(using app: ^App) {
 		return
 	}
 	if playing {
-		if agent_play(simulation.agent) {
-			sim_reset_agent(simulation)
-			current_round += 1
-			if max_rounds == current_round {
-				playing = false
-				current_round = 0
+		switch s in simulation.agent.variant {
+		case ^Agent:
+			if agent_play(s) {
+				sim_reset_agent(simulation)
+				current_round += 1
+				if max_rounds == current_round {
+					playing = false
+					current_round = 0
+				}
+				sim_update_policy(simulation)
 			}
-			sim_update_policy(simulation)
+		case ^InteractiveAgent:
+			if interactive_agent_play(s) {
+				sim_reset_agent(simulation)
+				current_round += 1
+				if max_rounds == current_round {
+					playing = false
+					current_round = 0
+				}
+				sim_update_policy(simulation)
+			}
 		}
 		return
 	}

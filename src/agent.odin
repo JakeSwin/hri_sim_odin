@@ -69,9 +69,7 @@ agent_choose_action :: proc(using agent: ^Agent) -> Action {
 	}
 }
 
-// Do round calculation outside
-// Returns true when goal has been reached, otherwise false
-agent_play :: proc(using agent: ^Agent) -> bool {
+agent_check_end :: proc(using agent: ^Agent) -> bool {
 	if reward := parent_sim.mat[current_pos.y][current_pos.x].reward; reward != 0 {
 		parent_sim.mat[current_pos.y][current_pos.x].utility = reward
 		for p in path {
@@ -80,6 +78,15 @@ agent_play :: proc(using agent: ^Agent) -> bool {
 			parent_sim.mat[p.y][p.x].utility = r
 		}
 		// Reset agent here? or outside
+		return true
+	}
+	return false
+}
+
+// Do round calculation outside
+// Returns true when goal has been reached, otherwise false
+agent_play :: proc(using agent: ^Agent) -> bool {
+	if agent_check_end(agent) {
 		return true
 	}
 	action := agent_choose_action(agent)

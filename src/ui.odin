@@ -142,6 +142,22 @@ ui_all_windows :: proc(using app: ^App) {
 		#partial switch s in app.simulation.agent.variant {
 			case ^InteractiveAgent:
 				if mu.window(mu_ctx, "Interactive Agent Options", {800, 200, 300, 200}, opts) {
+					if s.state != .NEW_ACTION {
+						mu.layout_row(mu_ctx, {-1})
+						mu.label(mu_ctx, "Agent Waiting for Feedback")
+						#partial switch s.state {
+						case .IS_GOOD:
+							mu.label(mu_ctx, fmt.tprintf("Agent Wants to move %v", s.next_action))
+						case .WAS_GOOD:
+							mu.label(mu_ctx, fmt.tprintf("Agents last action: %v", s.last_action))
+						}
+						mu.layout_row(mu_ctx, {100, 100})
+						if .SUBMIT in mu.button(mu_ctx, "Good") { s.feedback = .GOOD }
+						if .SUBMIT in mu.button(mu_ctx, "Bad") { s.feedback = .BAD }
+					} else {
+						mu.layout_row(mu_ctx, {-1})
+						mu.label(mu_ctx, "Play to start interactive feedback")
+					}
 					// mu.label(mu_ctx, fmt.tprintf("%v", s.next_action))
 				}
 		}
